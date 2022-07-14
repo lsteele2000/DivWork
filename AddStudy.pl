@@ -58,6 +58,11 @@ my @results;
 
 		push @{$inProcess->{lines}}, $_;
 		my $tag = "$vals[Section]";
+		{
+			$tag = 0, last if $tag <= 0;
+			$tag = 1, last if $tag == 1;
+			$tag = 2;
+		}
 		my $offset = $inProcess->{offsets}->{$tag};
 		$offset->{start} = $line unless $offset->{start};
 		$offset->{end} = $line;
@@ -69,7 +74,7 @@ my @results;
 
 sub fixupSlice {
 my ($slice) = @_;
-	# print Data::Dumper->Dump( [$slice] );
+#print Data::Dumper->Dump( [$slice] );
 	my $lines = $slice->{lines};
 	my $offsets = $slice->{offsets};
 	my $origin = $offsets->{origin};

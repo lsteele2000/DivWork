@@ -47,7 +47,7 @@ use constant Pre 	=> 0;
 use constant ExDiv 	=> 1;
 use constant Post 	=> 2;
 	#print Data::Dumper->Dump( [$data] );
-	print "Slice,Section,Div,Date,Open,High,Low,Close,Post Deltas,Div Ratios,Max Ratio\n"; 
+	print "Slice,Day,Div,Date,Open,High,Low,Close,Post Deltas,Div Ratios,Max Ratio\n"; 
 	my $slice = 0;
 	my $portion = Pre;
 	my $print = sub { my ($slab,$section,$vals,$amount,$rowBack) = @_;
@@ -77,7 +77,6 @@ use constant Post 	=> 2;
 	foreach my $blob ( @$data )
 	{
 		++$slice;
-		my $portion = Pre;
 		#use constant PriceDate 	=> 0;
 		#use constant PriceOpen 	=> 4;
 		#use constant PriceHigh 	=> 5;
@@ -89,18 +88,19 @@ use constant Post 	=> 2;
 		#print Data::Dumper->Dump( [$blob] );
 		my $section = $blob->{preSection};
 		my $row = 0;
+		my $day = -@$section;
 		foreach my $dayVals ( @$section )
 		{
-			$print->( $slice,$portion,$dayVals,$amount,$row );
+			$print->( $slice,$day,$dayVals,$amount,$row );
+			++$day;
 		}
 
-		$portion = ExDiv;
-		$print->( $slice,$portion,$blob->{exDiv},$amount,++$row );
-		$portion = Post;
+		$day = 1; # ExDiv;
+		$print->( $slice,$day,$blob->{exDiv},$amount,++$row );
 		$section = $blob->{postSection};
 		foreach my $dayVals ( @$section )
 		{
-			$print->( $slice,$portion,$dayVals,$amount,++$row );
+			$print->( $slice,++$day,$dayVals,$amount,++$row );
 		}
 	}
 }
