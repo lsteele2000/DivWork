@@ -1,6 +1,7 @@
 
 use strict;
 use Data::Dumper;
+use 5.010;
 
 # Dividend history format, c&p from nasdaq.com, no header, convert tabs to commas
 my $priceTemplate = 'SYM-Pricing.csv';
@@ -20,8 +21,36 @@ use constant PriceLow 	=> 6;
 use constant PriceClose => 7;
 use constant PriceVol 	=> 8;
 
-print "Symbol, PreDayRange, PostDayRange, DivMultiple\n";
-print "$sym,$preRange,$postRange,$divMultiple\n";
+{
+my $id = 0;
+my $hdrPrinted = 0;
+my $ticker = $sym;
+	sub outLine{ 
+		my ($exdivId,$day,$vals,$div) = @_;
+		print( "ID,Ticker,ExdivId,Day,Dividend,Date,Open,High,Low,Close\n" ), $hdrPrinted = 1
+			unless $hdrPrinted = 1;
+		print( ++$id,
+			",",
+			$ticker,
+			",",
+			$exdivId,
+			",",
+			$day,
+			",",
+			$div,
+			",",
+			$vals->[PriceDate],
+			",",
+			$vals->[PriceOpen],
+			",",
+			$vals->[PriceHigh],
+			",",
+			$vals->[PriceLow],
+			",",
+			$vals->[PriceClose],
+			"\n");
+	};
+}
 
 my $priceSource = $priceTemplate;
 $priceSource =~ s/SYM/$sym/;
@@ -47,10 +76,12 @@ use constant Pre 	=> 0;
 use constant ExDiv 	=> 1;
 use constant Post 	=> 2;
 	#print Data::Dumper->Dump( [$data] );
-	print "Slice,Day,Div,Date,Open,High,Low,Close,Post Deltas,Div Ratios,Max Ratio\n"; 
+	print "ID,Ticker,ExdivId,Day,Div,Date,Open,High,Low,Close\n"; # ,Post Deltas,Div Ratios,Max Ratio\n"; 
 	my $slice = 0;
 	my $portion = Pre;
-	my $print = sub { my ($slab,$section,$vals,$amount,$rowBack) = @_;
+
+
+	my $print2 = sub { my ($slab,$section,$vals,$amount,$rowBack) = @_;
 			my $rowLine = "";
 			$rowLine = "INDIRECT(ADDRESS(ROW()-$rowBack,COLUMN()))-G1" if 0 && $rowBack;
 			print 
@@ -89,18 +120,19 @@ use constant Post 	=> 2;
 		my $section = $blob->{preSection};
 		my $row = 0;
 		my $day = -@$section;
+
 		foreach my $dayVals ( @$section )
 		{
-			$print->( $slice,$day,$dayVals,$amount,$row );
+			outLine( $slice,$day,$dayVals,$amount);
 			++$day;
 		}
 
 		$day = 1; # ExDiv;
-		$print->( $slice,$day,$blob->{exDiv},$amount,++$row );
+		outLine( $slice,$day,$blob->{exDiv},$amount );
 		$section = $blob->{postSection};
 		foreach my $dayVals ( @$section )
 		{
-			$print->( $slice,++$day,$dayVals,$amount,++$row );
+			outLine( $slice,++$day,$dayVals,$amount );
 		}
 	}
 }
