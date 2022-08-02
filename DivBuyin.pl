@@ -17,6 +17,7 @@ my %config = (
 	sellRange => 10,
 	divMultiple => 1.25,
 	sellOffset => 0,
+	lowBasedSell => 0,
 	raw => 0,
 	cfg => 0,
 );
@@ -26,11 +27,14 @@ GetOptions( \%config,
 	"sellRange=i",
 	"divMultiple=f",
 	"sellOffset=f",
+	"lowBasedSell!",
 	"raw!",
 	"cfg!",
 );
 Usage( "" ) if $config{help};
 #print Data::Dumper->Dump( [%config] );
+Usage( "lowBasedSell needs sellOffset" )
+	if $config{lowBasedSell} and ($config{sellOffset} == 0);
 
 # Dividend history format, c&p from nasdaq.com, no header, convert tabs to commas
 my $priceTemplate = 'SYM-Pricing.csv';
@@ -52,12 +56,13 @@ use constant PriceVol 	=> 8;
 my $ticker = $sym;
 my $cfg = \%config;
 	sub buyInCfg {
-		print "Sym, BuyWindow, SellWindow, DivMutiple, SellOffet\n";
+		print "Sym, BuyWindow, SellWindow, DivMutiple, SellOffset, LowBaseSellPrice\n";
 		print "$ticker",
 			",$cfg->{buyRange}",
 			",$cfg->{sellRange}",
 			",$cfg->{divMultiple}",
 			",$cfg->{sellOffset}",
+			",$cfg->{lowBasedSell}",
 			"\n"
 			;
 		
@@ -113,14 +118,18 @@ my $ticker = $sym;
 			"MaxHigh,",
 			"BuyDay,",
 			"SellDay",
-			",MaxBuyDiff",
-			",MaxSellDiff",
+			",BuyCushion",
+			",SellCushion",
+			",Buy2High",
+			",Captured",
 			"\n" ), $hdrPrinted = 1
 			unless $hdrPrinted;
 
 		#print Data::Dumper->Dump( [$vals] );
 		my $buyDiff = sprintf( "%0.2f", $vals->{firstBuyDay} ? $vals->{buyTarget}  - $vals->{maxLow} : 0);
 		my $sellDiff = sprintf( "%0.2f", $vals->{firstSellDay} ? $vals->{maxHigh} - $vals->{sellTarget} : 0);
+		my $buy2High = sprintf( "%0.2f", $vals->{firstBuyDay} ? $vals->{maxHigh} - $vals->{buyTarget} : 0);
+		my $captured = sprintf( "%0.2f", ($vals->{firstBuyDay} and $vals->{firstSellDay}) ?  $vals->{sellTarget} - $vals->{buyTarget} : 0);
 		print( ++$id,
 			",",
 			$ticker,
@@ -152,6 +161,10 @@ my $ticker = $sym;
 			$buyDiff,
 			",",
 			$sellDiff,
+			",",
+			$buy2High,
+			",",
+			$captured,
 			"\n");
 	};
 }
@@ -306,7 +319,9 @@ my @results;
 
 		my $buyTarget = $tm1Pricing->[PriceClose] - $exdivRange->{buyDiscount};
 		$exdivRange->{buyTarget} = $buyTarget; 
-		my $sellTarget = $tm1Pricing->[PriceClose] + $config->{sellOffset};
+
+		my $sellReference = $config->{lowBasedSell} ? $buyTarget : $tm1Pricing->[PriceClose];
+		my $sellTarget = $sellReference + $config->{sellOffset};
 		$exdivRange->{sellTarget} = $sellTarget;
 
 		my $startIndex = $tm1Index+1;
