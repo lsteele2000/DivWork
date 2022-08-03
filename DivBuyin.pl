@@ -104,30 +104,31 @@ my $hdrPrinted = 0;
 my $ticker = $sym;
 	sub buyInOutline{ 
 		my ($exdivId,$vals) = @_;
-		print( 	"ID,",
-			"Ticker,",
-			"ExdivId,",
-			"Div,",
-			"ExdivDate,",
-			"T-1_Close,",
-			"BuyDivRatio,",
-			"BuyTarget,",
-			"SellOffset,",
-			"SellTarget,",
-			"MaxLow,",
-			"MaxHigh,",
-			"BuyDay,",
-			"SellDay",
+		print( 	"ID",
+			",Ticker",
+			",ExdivId",
+			",Div",
+			",ExdivDate",
+			",T-1_Close",
+			",BuyDivRatio",
+			",SellOffset",
+			",BuyTarget",
+			",SellTarget",
+			",MaxLow",
+			",MaxHigh",
 			",BuyCushion",
 			",SellCushion",
 			",Buy2High",
 			",Captured",
+			",BuyDay",
+			",SellDay",
 			"\n" ), $hdrPrinted = 1
 			unless $hdrPrinted;
 
 		#print Data::Dumper->Dump( [$vals] );
-		my $buyDiff = sprintf( "%0.2f", $vals->{firstBuyDay} ? $vals->{buyTarget}  - $vals->{maxLow} : 0);
-		my $sellDiff = sprintf( "%0.2f", $vals->{firstSellDay} ? $vals->{maxHigh} - $vals->{sellTarget} : 0);
+		my $buyDiff = sprintf( "%0.2f", $vals->{buyTarget}  - $vals->{maxLow} );
+		#my $sellDiff = sprintf( "%0.2f", $vals->{firstSellDay} ? $vals->{maxHigh} - $vals->{sellTarget} : 0);
+		my $sellDiff = sprintf( "%0.2f", $vals->{maxHigh} - $vals->{sellTarget} );
 		my $buy2High = sprintf( "%0.2f", $vals->{firstBuyDay} ? $vals->{maxHigh} - $vals->{buyTarget} : 0);
 		my $captured = sprintf( "%0.2f", ($vals->{firstBuyDay} and $vals->{firstSellDay}) ?  $vals->{sellTarget} - $vals->{buyTarget} : 0);
 		print( ++$id,
@@ -144,19 +145,15 @@ my $ticker = $sym;
 			",",
 			$config{divMultiple},
 			",",
-			sprintf( "%0.2f",$vals->{buyTarget}),
-			",",
 			$config{sellOffset},
+			",",
+			sprintf( "%0.2f",$vals->{buyTarget}),
 			",",
 			sprintf( "%0.2f", $vals->{sellTarget}),
 			",",
 			sprintf( "%0.2f",$vals->{maxLow}),
 			",",
 			sprintf( "%0.2f",$vals->{maxHigh}),
-			",",
-			$vals->{firstBuyDay},
-			",",
-			$vals->{firstSellDay},
 			",",
 			$buyDiff,
 			",",
@@ -165,6 +162,10 @@ my $ticker = $sym;
 			$buy2High,
 			",",
 			$captured,
+			",",
+			$vals->{firstBuyDay},
+			",",
+			$vals->{firstSellDay},
 			"\n");
 	};
 }
@@ -379,6 +380,7 @@ my @results;
 
 sub makeDateKey {
 my ($date) = @_;
+# convert date to numerically comparable
 	my ($month, $day, $year) = split '/', $date;
 	my $key = sprintf( "$year%02d%02d", $month, $day );
 	return $key;
@@ -473,7 +475,7 @@ my %results;
 }
 
 sub Usage {
-	print join("\n", @_),"\n";
+	print "\n",join("\n", @_),"\n";
 	print<<EOH;
 
 Usage 
@@ -484,10 +486,14 @@ options:
 	--sellRange : (default 10) sell window in days ([should be] from first buy day)
 		note: currently number of days is buyRange + sellRange
 	--divMultiplier: (default 1.25) sets div ratio, i.e. buy target == (t-1 close)-(div*divratio)
-	--sellOffset: (default 0) value to add to t-1 close for sell target
-	--raw boolean (default 0) output pricing after summary
-	--cfg boolean (default 0) output params -- XXX pending implementation
+	--cfg bool default false, output configuration params, prior to study
+	--raw bool default false, output pricing, after summary
+	--sellOffset: number (default 0.00) value/offset to add to reference to generate selltarget. See (lowBasedSell).
+	--lowBasedSell: bool default false, if false sellTarget is t-1_close+sellOffset otherwise buyTarget+sellOffset
 	--help: print usage
+
+Bugs:
+	sellRange of one not working. Need to review the code to insure the sell window is being set correctly
 
 EOH
 	die("\n");
